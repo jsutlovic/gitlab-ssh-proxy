@@ -48,10 +48,10 @@ Create a new SSH key-pair
 sudo su - git -c "ssh-keygen -t ed25519"
 ```
 
-Assuming run the container with `--volume /srv/gitlab/ssh:/gitlab-data/ssh:Z`, copy and rename the public key to `/srv/gitlab/ssh/authorized_keys`.
+Assuming run the container with `--volume /srv/gitlab/ssh:/var/opt/gitlab/.ssh:Z`, copy and rename the public key to `/srv/gitlab/ssh/authorized_keys`.
 
 ```bash
-sudo cp /home/git/.ssh/id_ed25519.pub /srv/gitlab/ssh/authorized_keys
+cat /home/git/.ssh/id_ed25519.pub | sudo tee /srv/gitlab/ssh/authorized_keys
 ```
 
 Fix the permission/ownership of the `authorized_keys` file to ensure that is only readable by the `git` user within the container. Otherwise SSH won't use the file.
@@ -59,12 +59,14 @@ Fix the permission/ownership of the `authorized_keys` file to ensure that is onl
 ```bash
 # If you are using Docker, substitute podman with docker
 podman exec -it gitlab /bin/sh -c \
-    "chmod 600 /gitlab-data/ssh/authorized_keys; chown git:git /gitlab-data/ssh/authorized_keys"
+    "chmod 600 /var/opt/gitlab/.ssh/authorized_keys; chown git:git /var/opt/gitlab/.ssh/authorized_keys"
 ```
 
 Open `/etc/ssh/sshd_config` and add the following lines:
 
 ```ssh-config
+AcceptEnv GIT_PROTOCOL
+
 Match User git
     PasswordAuthentication no
     AuthorizedKeysCommand /usr/local/bin/gitlab-keys-check git %u %k
@@ -120,7 +122,7 @@ command="/usr/local/bin/gitlab-shell-proxy key-1",no-port-forwarding,no-X11-forw
 
 The SSH server will see the updated command and execute `gitlab-shell-proxy`. This script will run `ssh` again and execute the orginal binary `/opt/.../bin/gitlab-shell`, effectively creating a proxy to the GitLab container.
 
-For this to work, the `git` user in the host would need to have an `authorized_key` in the GitLab container. Therefore copy its public key file into `/gitlab-data/ssh/authorized_keys` in the container. We also need to adjust the file permission as Open SSH is quite strict about it.
+For this to work, the `git` user in the host would need to have an `authorized_key` in the GitLab container. Therefore copy its public key file into `/var/opt/gitlab/.ssh/authorized_keys` in the container. We also need to adjust the file permission as Open SSH is quite strict about it.
 
 There is one complication. In machines with SE Linux enabled, we are unable to execute `ssh` from the `AuthorizedKeysCommand`. To workaround this, we would need to install a custom policy file [`gitlab-ssh.te`](gitlab-ssh.te) to enable this. 
 

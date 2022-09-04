@@ -1,5 +1,6 @@
-#!/usr/bin/sh
+#!/usr/bin/bash
 
+SE_LINUX=${SE_LINUX:-no}
 SRC_DIR=$(dirname $0)
 BUILD_DIR="$SRC_DIR/build"
 PREFIX=${PREFIX:-/usr/local}
